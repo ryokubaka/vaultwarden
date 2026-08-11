@@ -20,6 +20,8 @@
 - [ ] Create orgs / collections / groups — [organizations.md](organizations.md); disable public signups
 - [ ] Optional: [Directory Connector](directory-connector.md)
 - [ ] When IT ready: switch SMTP to Office 365 — [smtp.md](smtp.md)
+- [ ] Mount NAS share; set `NAS_BACKUP_PATH`; `cp backup.env.example backup.env`; `--profile backup` — [backup.md](backup.md)
+- [ ] One test restore from NAS archive
 
 ## Layout
 
@@ -27,13 +29,16 @@
 portable/
   README.md                 # index
   docs/                     # this documentation
-  docker-compose.yml
+  docker-compose.yml        # version-pinned images
   Caddyfile                 # tls internal (default)
   Caddyfile.adcs.example    # AD CS PEMs
   .env.example
+  backup.env.example
   .gitignore
   certs/                    # AD CS PEMs (gitignored except .gitkeep)
   emailproxy/               # OAuth SMTP proxy config + token cache
+  backup-ssh/               # optional SSH keys for NAS SFTP
+  backups/                  # local archive fallback (or unused if NAS path set)
   scripts/export-caddy-root.sh
   data/                     # Vaultwarden data (contents gitignored)
   caddy-data/

@@ -1,4 +1,5 @@
 .env
+backup.env
 # Keep data/ in git; ignore vault contents (db, keys, attachments)
 data/*
 !data/.gitkeep
@@ -10,3 +11,7 @@ certs/*
 exported-ca/
 emailproxy/*
 !emailproxy/emailproxy.config.example
+backups/*
+!backups/.gitkeep
+backup-ssh/*
+!backup-ssh/.gitkeep

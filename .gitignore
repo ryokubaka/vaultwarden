@@ -1,8 +1,8 @@
 # Local build artifacts
 target
 
-# Data folder
-data
+# Data folder (repo root only; portable pack keeps docker/portable/data/.gitkeep)
+/data
 
 # IDE files
 .vscode

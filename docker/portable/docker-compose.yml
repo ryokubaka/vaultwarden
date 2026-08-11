@@ -1,10 +1,20 @@
 name: vaultwarden-portable
 
+# Image pins (bump deliberately; do not use :latest):
+#   vaultwarden/server          1.37.1
+#   caddy                       2.11.4
+#   axllent/mailpit             v1.30.7
+#   blacktirion/email-oauth2-proxy-docker  2026.07.03.1
+#   offen/docker-volume-backup  v2.48.2
+
 services:
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.37.1
     container_name: vaultwarden
     restart: unless-stopped
+    labels:
+      # Brief stop during offen backup so SQLite is consistent
+      docker-volume-backup.stop-during-backup: "true"
     env_file:
       - .env
     environment:
@@ -26,7 +36,7 @@ services:
       - vw_net
 
   caddy:
-    image: caddy:2
+    image: caddy:2.11.4
     container_name: caddy
     restart: unless-stopped
     ports:
@@ -41,7 +51,6 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./caddy-data:/data
       - ./caddy-config:/config
-      # AD CS / external certs (optional): place PEM files in ./certs
       - ./certs:/certs:ro
     depends_on:
       - vaultwarden
@@ -49,11 +58,10 @@ services:
       - vw_net
 
   # Optional catch-all UI. Enable: docker compose --profile mailpit up -d
-  # Point SMTP_* at mailpit:1025 / SMTP_SECURITY=off when using this.
   mailpit:
     profiles:
       - mailpit
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.30.7
     container_name: mailpit
     restart: unless-stopped
     environment:
@@ -63,21 +71,45 @@ services:
       - vw_net
 
   # Optional O365 OAuth2 SMTP bridge. Enable: docker compose --profile oauth-smtp up -d
-  # Point SMTP_* at emailproxy:1587 / SMTP_SECURITY=off — see docs/email-oauth2-proxy.md
   emailproxy:
     profiles:
       - oauth-smtp
-    image: blacktirion/email-oauth2-proxy-docker:latest
+    image: blacktirion/email-oauth2-proxy-docker:2026.07.03.1
     container_name: emailproxy
     restart: unless-stopped
     environment:
       LOGFILE: "true"
       DEBUG: ${EMAILPROXY_DEBUG:-false}
       CACHE_STORE: /config/credstore.config
-      # Device flow is configured in emailproxy.config; no LOCAL_SERVER_AUTH required.
     volumes:
       - ./emailproxy:/config
-    # SMTP only on compose network (do not publish 1587 to the host).
+    networks:
+      - vw_net
+
+  # NAS / local archives via offen/docker-volume-backup.
+  # Enable: docker compose --profile backup up -d
+  # Docs: docs/backup.md
+  backup:
+    profiles:
+      - backup
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: vw-backup
+    restart: unless-stopped
+    env_file:
+      - backup.env
+    environment:
+      # Expand ${NAS_BACKUP_PATH} from project .env for documentation only;
+      # archive path inside container is always /archive.
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./data:/backup/vaultwarden:ro
+      - ./caddy-data:/backup/caddy-data:ro
+      - ./emailproxy:/backup/emailproxy:ro
+      # NAS share mounted on the host, or local ./backups fallback
+      - ${NAS_BACKUP_PATH:-./backups}:/archive
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Optional SSH key for NAS over SFTP (see backup.env.example)
+      - ./backup-ssh:/root/.ssh:ro
     networks:
       - vw_net
 
