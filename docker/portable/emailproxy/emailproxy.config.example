@@ -1,0 +1,24 @@
+# Copy to emailproxy.config and fill Entra app + mailbox values.
+# Docs: docs/email-oauth2-proxy.md
+# Upstream sample: https://github.com/simonrob/email-oauth2-proxy/blob/main/emailproxy.config
+#
+# local_address must be 0.0.0.0 in Docker so Vaultwarden can reach this service.
+
+[SMTP-1587]
+documentation = Office 365 / Exchange Online SMTP via OAuth2
+server_address = smtp.office365.com
+server_port = 587
+server_starttls = True
+local_address = 0.0.0.0
+
+# Section title MUST be the mailbox SMTP address (same as Vaultwarden SMTP_USERNAME / SMTP_FROM).
+[vaultwarden@contoso.com]
+documentation = Replace section name + tenant ID + client_id/secret. Device flow = good for headless Docker.
+# Prefer your tenant ID instead of "common" for single-tenant apps:
+permission_url = https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/devicecode
+token_url = https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token
+oauth2_scope = https://outlook.office.com/SMTP.Send offline_access
+oauth2_flow = device
+redirect_uri = https://login.microsoftonline.com/common/oauth2/nativeclient
+client_id = *** ENTRA_APP_CLIENT_ID ***
+client_secret = *** ENTRA_APP_CLIENT_SECRET ***

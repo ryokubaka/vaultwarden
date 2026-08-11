@@ -1,0 +1,86 @@
+name: vaultwarden-portable
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DOMAIN: ${DOMAIN:-https://vw.org-testing.meow}
+      SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED:-true}
+      INVITATIONS_ALLOWED: ${INVITATIONS_ALLOWED:-true}
+      SHOW_PASSWORD_HINT: ${SHOW_PASSWORD_HINT:-false}
+      ORG_GROUPS_ENABLED: ${ORG_GROUPS_ENABLED:-true}
+      # ADMIN_TOKEN / SMTP_USERNAME / SMTP_PASSWORD: env_file only.
+      # Do not put ADMIN_TOKEN here — Compose eats $ in Argon2 PHC strings.
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST in .env}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM in .env}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Vaultwarden}
+    volumes:
+      - ./data:/data
+    networks:
+      - vw_net
+
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      VW_HOST: ${VW_HOST:-vw.org-testing.meow}
+      MAIL_HOST: ${MAIL_HOST:-mail.org-testing.meow}
+      LOG_FILE: /data/access.log
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-data:/data
+      - ./caddy-config:/config
+      # AD CS / external certs (optional): place PEM files in ./certs
+      - ./certs:/certs:ro
+    depends_on:
+      - vaultwarden
+    networks:
+      - vw_net
+
+  # Optional catch-all UI. Enable: docker compose --profile mailpit up -d
+  # Point SMTP_* at mailpit:1025 / SMTP_SECURITY=off when using this.
+  mailpit:
+    profiles:
+      - mailpit
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    networks:
+      - vw_net
+
+  # Optional O365 OAuth2 SMTP bridge. Enable: docker compose --profile oauth-smtp up -d
+  # Point SMTP_* at emailproxy:1587 / SMTP_SECURITY=off — see docs/email-oauth2-proxy.md
+  emailproxy:
+    profiles:
+      - oauth-smtp
+    image: blacktirion/email-oauth2-proxy-docker:latest
+    container_name: emailproxy
+    restart: unless-stopped
+    environment:
+      LOGFILE: "true"
+      DEBUG: ${EMAILPROXY_DEBUG:-false}
+      CACHE_STORE: /config/credstore.config
+      # Device flow is configured in emailproxy.config; no LOCAL_SERVER_AUTH required.
+    volumes:
+      - ./emailproxy:/config
+    # SMTP only on compose network (do not publish 1587 to the host).
+    networks:
+      - vw_net
+
+networks:
+  vw_net:
+    driver: bridge

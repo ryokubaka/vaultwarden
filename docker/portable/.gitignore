@@ -1,0 +1,12 @@
+.env
+# Keep data/ in git; ignore vault contents (db, keys, attachments)
+data/*
+!data/.gitkeep
+caddy-data/
+caddy-config/
+mailpit-data/
+certs/*
+!certs/.gitkeep
+exported-ca/
+emailproxy/*
+!emailproxy/emailproxy.config.example
