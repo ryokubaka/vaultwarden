@@ -26,7 +26,7 @@ Images are **version-pinned** (not `:latest`) — see comments in `docker-compos
 | [docs/smtp.md](docs/smtp.md) | Gmail, Mailjet, Mailpit, Office 365, Barracuda |
 | [docs/email-oauth2-proxy.md](docs/email-oauth2-proxy.md) | O365 when basic SMTP AUTH is blocked |
 | [docs/tls-certs.md](docs/tls-certs.md) | Caddy root GPO vs AD CS certs |
-| [docs/organizations.md](docs/organizations.md) | Orgs, groups, collections, permission matrix |
+| [docs/organizations.md](docs/organizations.md) | Orgs, groups, collections, account recovery |
 | [docs/directory-connector.md](docs/directory-connector.md) | AD / LDAP sync with Bitwarden Directory Connector |
 | [docs/backup.md](docs/backup.md) | NAS backups with offen/docker-volume-backup |
 | [docs/lift-and-shift.md](docs/lift-and-shift.md) | On-site checklist + directory layout |

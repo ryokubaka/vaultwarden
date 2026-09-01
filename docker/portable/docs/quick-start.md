@@ -28,11 +28,16 @@ Only needed for Mailpit UI: also add `mail.org-testing.meow`.
 
 ## First login
 
+If you came through [utility-support](https://github.com/ryokubaka/utility-support), skip this list. That script already created the owner, turned signups off, built Org-IT and Org-OT, and turned on account recovery. Log in with `VW_OWNER_EMAIL` / `VW_OWNER_PASSWORD`. Then send a test email from `/admin`.
+
+Standalone compose:
+
 1. `https://vw.org-testing.meow` — create the first account.
 2. Admin panel: `https://vw.org-testing.meow/admin` — password = secret used with `vaultwarden hash` (not the PHC string).
 3. Admin → SMTP → **Send test email** to yourself; confirm inbox.
 4. Set `SIGNUPS_ALLOWED=false` in `.env`, then `docker compose up -d vaultwarden`.
 5. Org Groups are enabled (`ORG_GROUPS_ENABLED=true`). Web vault Admin Console → **Groups**.
+6. After both orgs exist, turn on account recovery. Leave Single organization off. See [organizations.md](organizations.md).
 
 Expect a cert warning until you trust the Caddy root or install AD CS certs — see [tls-certs.md](tls-certs.md).
 

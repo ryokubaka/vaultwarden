@@ -15,6 +15,7 @@ Collection ACLs are set in Vaultwarden — see [organizations.md](organizations.
 ## Prerequisites
 
 - [ ] Orgs exist (`Org-IT`, `Org-OT`); you are **Owner**
+- [ ] Account recovery on, auto-enroll on, Single organization off — [organizations.md](organizations.md). New invites then enroll without a click. People who already have a master password still self-enroll once.
 - [ ] `ORG_GROUPS_ENABLED=true`
 - [ ] `INVITATIONS_ALLOWED=true`
 - [ ] SMTP working — [smtp.md](smtp.md)

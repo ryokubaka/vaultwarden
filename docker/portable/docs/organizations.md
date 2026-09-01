@@ -119,6 +119,16 @@ IT model: **admins vs everyone else** for privileged infra (no separate “sysad
 
 ---
 
+## Account recovery
+
+Turn this on for both orgs after they exist. Admin Console, Policies, Account recovery administration. Check **Turn on** and **Automatically enroll new members**.
+
+Do not turn on Single organization. Dual-hat people live in both orgs. That policy removes members who belong to another org. Owners and admins stay. The web vault still shows a banner that Single organization is required. That is Bitwarden copy. Vaultwarden only enforces it if `ENFORCE_SINGLE_ORG_WITH_RESET_PW_POLICY` is true. Leave that unset.
+
+Auto-enroll covers people invited after the policy is on. Anyone who already has a master password must self-enroll once before an admin can recover that account.
+
+The [utility-support](https://github.com/ryokubaka/utility-support) quickstart sets this policy when it creates or keeps Org-IT and Org-OT. Standalone `docker compose` does not. Do it in the UI, or re-run that bootstrap.
+
 ## Cross-cutting rules
 
 1. Dual-hat people → members of **both orgs**, separate groups.
@@ -126,6 +136,7 @@ IT model: **admins vs everyone else** for privileged infra (no separate “sysad
 3. Breakglass — `*-Admins` only; rotate after use.
 4. Vendors — empty by default; calendar expiry; strip after.
 5. Personal vaults — personal logins only; plant secrets → org collections.
+6. Account recovery on, Single organization off. See above.
 
 ---
 
