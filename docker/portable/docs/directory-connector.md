@@ -6,7 +6,7 @@
 
 Official docs: [About Directory Connector](https://bitwarden.com/help/directory-sync/) · [AD/LDAP settings](https://bitwarden.com/help/ldap-directory/) · [Desktop](https://bitwarden.com/help/directory-sync-desktop/) · [CLI](https://bitwarden.com/help/directory-sync-cli/).
 
-**One Connector login per org** (Org-IT and Org-OT each have their own Organization API key). Run sync twice with different keys/filters, or use two profiles/machines.
+**One Connector login** for the single org (default name `Plant`). One Organization API key, one sync.
 
 Collection ACLs are set in Vaultwarden — see [organizations.md](organizations.md). Connector does not set them.
 
@@ -14,8 +14,8 @@ Collection ACLs are set in Vaultwarden — see [organizations.md](organizations.
 
 ## Prerequisites
 
-- [ ] Orgs exist (`Org-IT`, `Org-OT`); you are **Owner**
-- [ ] Account recovery on, auto-enroll on, Single organization off — [organizations.md](organizations.md). New invites then enroll without a click. People who already have a master password still self-enroll once.
+- [ ] The org exists (default `Plant`); you are **Owner**
+- [ ] Account recovery on, auto-enroll on — [organizations.md](organizations.md). New invites then enroll without a click. People who already have a master password still self-enroll once.
 - [ ] `ORG_GROUPS_ENABLED=true`
 - [ ] `INVITATIONS_ALLOWED=true`
 - [ ] SMTP working — [smtp.md](smtp.md)
@@ -24,11 +24,11 @@ Collection ACLs are set in Vaultwarden — see [organizations.md](organizations.
 
 ---
 
-## 1) Organization API key (per org)
+## 1) Organization API key
 
 In the **web vault** (not `/admin`):
 
-1. Admin Console for the org (e.g. Org-IT).
+1. Admin Console for the org.
 2. **Settings** → **Organization info** / **API key**.
 3. View / rotate — confirm with master password.
 4. Save:
@@ -37,8 +37,6 @@ In the **web vault** (not `/admin`):
    |-------|--------|
    | `client_id` | `organization.<uuid>` |
    | `client_secret` | long random string |
-
-5. Repeat for Org-OT.
 
 Treat `client_secret` like a password.
 
@@ -102,31 +100,25 @@ Prefer AD group CNs that match Vaultwarden names (`IT-Admins`, `OT-Engineers`, �
 
 ### Recommended: umbrella AD group (readable)
 
-Create `Vaultwarden-Org-IT` in AD. Nest role groups (`IT-Users`, `IT-Helpdesk`, …) under it (or add users to it).
+Create `Vaultwarden` in AD. Nest the IT and OT role groups under it (or add users to it).
 
-**Org-IT — user filter** (who gets invited to the org):
+**User filter** (who gets invited to the org):
 
 ```text
-(&(objectCategory=Person)(sAMAccountName=*)(memberOf:1.2.840.113556.1.4.1941:=CN=Vaultwarden-Org-IT,OU=Groups,DC=plant,DC=local))
+(&(objectCategory=Person)(sAMAccountName=*)(memberOf:1.2.840.113556.1.4.1941:=CN=Vaultwarden,OU=Groups,DC=plant,DC=local))
 ```
 
 (`1.2.840.113556.1.4.1941` = nested group match. `memberOf` always needs the group’s **full DN**, not a bare CN.)
 
-**Org-IT — group filter** (which groups appear in VW):
+**Group filter** (which groups appear in VW):
 
 ```text
-(&(objectCategory=group)(|(cn=IT-Users)(cn=IT-Helpdesk)(cn=IT-Network)(cn=IT-Admins)(cn=IT-Vendors)))
-```
-
-**Org-OT:** umbrella `Vaultwarden-Org-OT` + group filter:
-
-```text
-(&(objectCategory=group)(|(cn=OT-Operators)(cn=OT-Engineers)(cn=OT-Admins)(cn=OT-Vendors)))
+(&(objectCategory=group)(|(cn=IT-Users)(cn=IT-Helpdesk)(cn=IT-Network)(cn=IT-Admins)(cn=IT-Vendors)(cn=OT-Operators)(cn=OT-Engineers)(cn=OT-Admins)(cn=OT-Vendors)))
 ```
 
 ### Alternative: OU-scoped users
 
-Put IT people under `OU=IT,...`. Set User Path accordingly; user filter can be simply “enabled persons”:
+Put vault users under one OU (or a parent that holds both IT and OT). Set User Path accordingly; user filter can be simply “enabled persons”:
 
 ```text
 (&(objectCategory=Person)(sAMAccountName=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))
@@ -150,7 +142,7 @@ Replace `DC=plant,DC=local` / OUs with the real domain DNs.
 4. Users accept invite → set master password → confirm if required
 5. Attach groups → collections once ([organizations.md](organizations.md))
 
-Repeat for the other org with its API key + filters.
+One org, one sync. Do not create a second Connector profile.
 
 ---
 
@@ -163,7 +155,7 @@ bwdc test
 bwdc sync
 ```
 
-Task Scheduler / cron hourly. Two orgs → two tasks / isolated configs (separate OS users or app-data dirs) so filters don’t clobber each other.
+Task Scheduler / cron hourly. One org, one task.
 
 ---
 

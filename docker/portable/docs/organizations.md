@@ -1,11 +1,10 @@
 # Organizations, groups, collections
 
-**Orgs** = trust domains (IT vs OT).  
-**Groups** = roles.  
+**Org** = one company vault.  
+**Groups** = roles (`IT-*` and `OT-*`).  
 **Collections** = secret sets.
 
-`ORG_GROUPS_ENABLED=true` in this pack. Prefer groups over one-org-per-role.
-
+`ORG_GROUPS_ENABLED=true` in this pack. Isolation is groups × collections. Do not create a second org.
 
 | Code  | Meaning                                 |
 | ----- | --------------------------------------- |
@@ -13,16 +12,19 @@
 | **E** | Edit items (implies view)               |
 | **M** | Manage collection access (implies edit) |
 
+Org-level: one **Owner** (breakglass human) and almost nobody as **Admin**. Everyone else is **User**. Access is groups, not org Admin.
 
-Org-level: one **Owner** (breakglass human) + few **Admins** per org. Everyone else = **User**, access via groups.
+An org Admin can see every collection. Do not make an IT-only or OT-only person an org Admin. That would show them the other side's breakglass.
 
 IT model: **admins vs everyone else** for privileged infra (no separate “sysadmin” group). Specialty groups (`Helpdesk`, `Network`) only where the job is clearly different.
+
+Default org name from utility-support is `Plant`. Override with `VW_ORG_NAME`.
 
 ---
 
 ## Build order
 
-1. Create org → you are Owner.
+1. Create the org → you are Owner.
 2. Create collections (empty first).
 3. Create groups (manually **or** sync from AD — [directory-connector.md](directory-connector.md)).
 4. Assign groups → collections (tables below). Collection ACLs are **not** synced from AD.
@@ -30,21 +32,25 @@ IT model: **admins vs everyone else** for privileged infra (no separate “sysad
 
 ---
 
-## Org 1: Org-IT
-
-### Groups
+## Groups
 
 
-| Group         | Who                                                    |
-| ------------- | ------------------------------------------------------ |
-| `IT-Users`    | General IT staff                                       |
-| `IT-Helpdesk` | Helpdesk / endpoint support                            |
-| `IT-Network`  | Firewall, switch, VPN, DNS                             |
-| `IT-Admins`   | Privileged IT (servers, apps, breakglass — few people) |
-| `IT-Vendors`  | Temp MSP / contractors                                 |
+| Group          | Who                                                    |
+| -------------- | ------------------------------------------------------ |
+| `IT-Users`     | General IT staff                                       |
+| `IT-Helpdesk`  | Helpdesk / endpoint support                            |
+| `IT-Network`   | Firewall, switch, VPN, DNS                             |
+| `IT-Admins`    | Privileged IT (servers, apps, breakglass — few people) |
+| `IT-Vendors`   | Temp MSP / contractors                                 |
+| `OT-Operators` | Control room / board operators                         |
+| `OT-Engineers` | Controls / SCADA / instrumentation engineering         |
+| `OT-Admins`    | OT privileged (very few)                               |
+| `OT-Vendors`   | OEM / integrator temp                                  |
 
 
-### Collections × groups
+---
+
+## IT collections × groups
 
 
 | Collection        | IT-Users | IT-Helpdesk | IT-Network | IT-Admins | IT-Vendors |
@@ -59,35 +65,14 @@ IT model: **admins vs everyone else** for privileged infra (no separate “sysad
 | `IT-Breakglass`   | —        | —           | —          | M         | —          |
 
 
- Vendor = time-boxed; remove after engagement.  
+* Vendor = time-boxed; remove after engagement.  
 † Optional non-privileged shared app logins only.
 
-### Org roles (IT)
-
-
-| People                   | Org role      | Groups                              |
-| ------------------------ | ------------- | ----------------------------------- |
-| 1–2 breakglass humans    | Owner         | `IT-Admins`                         |
-| Day-to-day privileged IT | Admin or User | `IT-Admins` (+ specialty if needed) |
-| Everyone else            | User          | Role group(s) only                  |
-
+IT groups have no grants on `OT-*` collections. OT groups have no grants on `IT-*` collections.
 
 ---
 
-## Org 2: Org-OT
-
-### Groups
-
-
-| Group          | Who                                            |
-| -------------- | ---------------------------------------------- |
-| `OT-Operators` | Control room / board operators                 |
-| `OT-Engineers` | Controls / SCADA / instrumentation engineering |
-| `OT-Admins`    | OT privileged (very few)                       |
-| `OT-Vendors`   | OEM / integrator temp                          |
-
-
-### Collections × groups
+## OT collections × groups
 
 
 | Collection      | What’s in it                           | OT-Operators | OT-Engineers | OT-Admins | OT-Vendors |
@@ -101,49 +86,54 @@ IT model: **admins vs everyone else** for privileged infra (no separate “sysad
 | `OT-Breakglass` | Highest-privilege OT recovery          | —            | —            | M         | —          |
 
 
- Vendor = time-boxed.  
+* Vendor = time-boxed.  
 § On-call / incident only; keep small.
 
-### Org roles (OT)
-
-
-| People            | Org role      | Groups                            |
-| ----------------- | ------------- | --------------------------------- |
-| 1–2 OT breakglass | Owner         | `OT-Admins`                       |
-| Controls leads    | Admin or User | `OT-Admins` and/or `OT-Engineers` |
-| Operators         | User          | `OT-Operators`                    |
-
-
 **Never** put PLC/engineering passwords in `OT-HMI`.  
-**Never** dual-home OT secrets into Org-IT collections.
+**Never** put OT secrets in `IT-*` collections.
+
+---
+
+## Org roles
+
+
+| People                   | Org role | Groups                                          |
+| ------------------------ | -------- | ----------------------------------------------- |
+| 1–2 breakglass humans    | Owner    | `IT-Admins` and `OT-Admins`                     |
+| Day-to-day privileged IT | User     | `IT-Admins` (+ specialty if needed)             |
+| Controls leads           | User     | `OT-Admins` and/or `OT-Engineers`               |
+| Everyone else            | User     | Role group(s) only                              |
+
+
+Dual-hat people stay in one org. Put them in both an IT group and an OT group.
 
 ---
 
 ## Account recovery
 
-Turn this on for both orgs after they exist. Admin Console, Policies, Account recovery administration. Check **Turn on** and **Automatically enroll new members**.
+Turn this on after the org exists. Admin Console, Policies, Account recovery administration. Check **Turn on** and **Automatically enroll new members**.
 
-Do not turn on Single organization. Dual-hat people live in both orgs. That policy removes members who belong to another org. Owners and admins stay. The web vault still shows a banner that Single organization is required. That is Bitwarden copy. Vaultwarden only enforces it if `ENFORCE_SINGLE_ORG_WITH_RESET_PW_POLICY` is true. Leave that unset.
+The [utility-support](https://github.com/ryokubaka/utility-support) quickstart turns account recovery on. Standalone `docker compose` does not. Do it in the UI, or re-run that bootstrap.
+
+Leave Single organization off if you also have a staff org (for example `GWA-Employees`). That policy removes members who belong to another org. IT vs OT does not need it.
 
 Auto-enroll covers people invited after the policy is on. Anyone who already has a master password must self-enroll once before an admin can recover that account.
 
-The [utility-support](https://github.com/ryokubaka/utility-support) quickstart sets this policy when it creates or keeps Org-IT and Org-OT. Standalone `docker compose` does not. Do it in the UI, or re-run that bootstrap.
+---
 
 ## Cross-cutting rules
 
-1. Dual-hat people → members of **both orgs**, separate groups.
+1. Dual-hat people → extra groups in the same org, not a second org.
 2. Default deny — new collection has no groups until attached.
 3. Breakglass — `*-Admins` only; rotate after use.
 4. Vendors — empty by default; calendar expiry; strip after.
 5. Personal vaults — personal logins only; plant secrets → org collections.
-6. Account recovery on, Single organization off. See above.
+6. Account recovery on. Single organization off unless this is the only org.
 
 ---
 
 ## Minimal start (tiny headcount)
 
-**Org-IT:** collections `IT-Shared-Staff` · `IT-Servers` · `IT-Breakglass`  
-Groups: `IT-Users` → Shared V; `IT-Admins` → all M  
+Collections: `IT-Shared-Staff` · `IT-Servers` · `IT-Breakglass` · `OT-HMI` · `OT-PLCs` · `OT-Breakglass`
 
-**Org-OT:** collections `OT-HMI` · `OT-PLCs` · `OT-Breakglass`  
-Groups: `OT-Operators` → HMI V; `OT-Engineers` → PLCs E; `OT-Admins` → all M  
+Groups: `IT-Users` → Shared V; `IT-Admins` → all IT M; `OT-Operators` → HMI V; `OT-Engineers` → PLCs E; `OT-Admins` → all OT M

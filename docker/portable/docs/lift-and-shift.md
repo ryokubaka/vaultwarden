@@ -17,8 +17,8 @@
 - [ ] AD DNS (or hosts) for `vw.org-testing.meow`
 - [ ] `docker compose up -d`
 - [ ] Path A (GPO Caddy root) **or** Path B (AD CS) — [tls-certs.md](tls-certs.md)
-- [ ] Create orgs / collections / groups — [organizations.md](organizations.md); disable public signups. If utility-support already built Org-IT / Org-OT, confirm them instead of creating a second set.
-- [ ] Account recovery on for both orgs, auto-enroll on, Single organization off — [organizations.md](organizations.md)
+- [ ] Create the org / collections / groups — [organizations.md](organizations.md); disable public signups. If utility-support already built the org, confirm it instead of creating a second one.
+- [ ] Account recovery on, auto-enroll on — [organizations.md](organizations.md)
 - [ ] Optional: [Directory Connector](directory-connector.md)
 - [ ] When IT ready: switch SMTP to Office 365 or Barracuda — [smtp.md](smtp.md)
 - [ ] Mount NAS share; set `NAS_BACKUP_PATH`; `cp backup.env.example backup.env`; `--profile backup` — [backup.md](backup.md)

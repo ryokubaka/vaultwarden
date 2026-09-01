@@ -42,7 +42,7 @@ Org Admin Console (collections / members / groups) = web vault → organization 
 
 - Set `SIGNUPS_ALLOWED=false` after the first admin exists.
 - Keep `ORG_GROUPS_ENABLED=true` unless you hit a known client bug; prefer groups over many orgs.
-- Account recovery on for Org-IT and Org-OT, with auto-enroll. Single organization off. See [organizations.md](organizations.md).
+- Account recovery on, auto-enroll on. Single organization off unless this is the only org. See [organizations.md](organizations.md).
 - Store `ADMIN_TOKEN` as an Argon2 PHC (`vaultwarden hash`); keep the plaintext secret in a password manager, not only in `.env`.
 - If Admin → Save created `data/config.json`, that file overrides env — update the token there or remove `"admin_token"` and recreate the container.
 - Restrict who can reach `:443` (mgmt VLAN / VPN).
