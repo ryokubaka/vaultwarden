@@ -1,6 +1,6 @@
 # SMTP (invites)
 
-No MTA in Compose by default. Vaultwarden talks to an external SMTP provider — same knobs for Gmail now and Office 365 or Barracuda later.
+No MTA in Compose by default. Vaultwarden talks to an external SMTP provider. Same knobs for Gmail, Hostway SiteControl, Mailjet, Office 365, or Barracuda.
 
 Invite links always use `DOMAIN` in `.env` (e.g. `https://vw.org-testing.meow`).
 
@@ -25,6 +25,39 @@ Invite links always use `DOMAIN` in `.env` (e.g. `https://vw.org-testing.meow`).
 4. Admin → SMTP test → check Gmail (and spam).
 
 Spaces in the app password are OK.
+
+---
+
+## Hostway SiteControl
+
+Mailbox AUTH through Hostway SiteProtect SMTP. Official client settings: [How to configure my email client](https://support.hostway.com/hc/en-us/articles/115000368264-How-To-Configure-My-Email-Client-General-Instructions).
+
+Username is the full mailbox address. Password is that mailbox password. Use a dedicated mailbox, not a person's daily inbox.
+
+1. In SiteControl, confirm the mailbox exists and you can log in to webmail.
+2. In `.env`:
+
+   ```env
+   SMTP_HOST=smtp.siteprotect.com
+   SMTP_PORT=587
+   SMTP_SECURITY=starttls
+   SMTP_USERNAME=vaultwarden@yourdomain.com
+   SMTP_PASSWORD=
+   SMTP_FROM=vaultwarden@yourdomain.com
+   SMTP_FROM_NAME=Vaultwarden
+   ```
+
+3. `docker compose up -d vaultwarden`
+4. Admin → SMTP test → check inbox and spam.
+
+If the plant firewall or ISP blocks 587, Hostway's alternate is port 465 with implicit TLS:
+
+```env
+SMTP_PORT=465
+SMTP_SECURITY=force_tls
+```
+
+Older Hostway pages used `smtp.yourdomain.com`. Current SiteControl / Open-Xchange mail uses `smtp.siteprotect.com`.
 
 ---
 

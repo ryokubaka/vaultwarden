@@ -11,7 +11,7 @@ Lift-and-shift stack for pilot / on-site demo.
 
 Default vault URL: `https://vw.org-testing.meow`
 
-SMTP → external relay (Gmail/Mailjet now, Office 365 or Barracuda later). No Let's Encrypt.  
+SMTP → external relay (Gmail, Hostway SiteControl, Mailjet, Office 365, or Barracuda). No Let's Encrypt.  
 Images are **version-pinned** (not `:latest`) — see comments in `docker-compose.yml`.
 
 > AD CS = HTTPS trust for clients. Real invite delivery = SMTP ([docs/smtp.md](docs/smtp.md)).
@@ -23,7 +23,7 @@ Images are **version-pinned** (not `:latest`) — see comments in `docker-compos
 | Doc | Topic |
 |-----|--------|
 | [docs/quick-start.md](docs/quick-start.md) | First boot, DNS, admin login |
-| [docs/smtp.md](docs/smtp.md) | Gmail, Mailjet, Mailpit, Office 365, Barracuda |
+| [docs/smtp.md](docs/smtp.md) | Gmail, Hostway SiteControl, Mailjet, Mailpit, Office 365, Barracuda |
 | [docs/email-oauth2-proxy.md](docs/email-oauth2-proxy.md) | O365 when basic SMTP AUTH is blocked |
 | [docs/tls-certs.md](docs/tls-certs.md) | Caddy root GPO vs AD CS certs |
 | [docs/organizations.md](docs/organizations.md) | Orgs, groups, collections, account recovery |
