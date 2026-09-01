@@ -96,7 +96,7 @@ Use a **dedicated read-only sync account** (not Domain Admin). See [AD/LDAP arti
 
 Enable **Sync users** and **Sync groups**.
 
-Prefer AD group CNs that match Vaultwarden names (`IT-Admins`, `OT-Engineers`, …).
+Prefer AD group CNs that match Vaultwarden names (`Employees`, `IT-Admins`, `OT-Engineers`, …).
 
 ### Recommended: umbrella AD group (readable)
 
@@ -113,7 +113,7 @@ Create `Vaultwarden` in AD. Nest the IT and OT role groups under it (or add user
 **Group filter** (which groups appear in VW):
 
 ```text
-(&(objectCategory=group)(|(cn=IT-Users)(cn=IT-Helpdesk)(cn=IT-Network)(cn=IT-Admins)(cn=IT-Vendors)(cn=OT-Operators)(cn=OT-Engineers)(cn=OT-Admins)(cn=OT-Vendors)))
+(&(objectCategory=group)(|(cn=Employees)(cn=IT-Users)(cn=IT-Helpdesk)(cn=IT-Network)(cn=IT-Admins)(cn=IT-Vendors)(cn=OT-Operators)(cn=OT-Engineers)(cn=OT-Admins)(cn=OT-Vendors)))
 ```
 
 ### Alternative: OU-scoped users

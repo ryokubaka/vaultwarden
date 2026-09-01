@@ -1,7 +1,7 @@
 # Organizations, groups, collections
 
 **Org** = one company vault.  
-**Groups** = roles (`IT-*` and `OT-*`).  
+**Groups** = roles (`Employees`, `IT-*`, `OT-*`).  
 **Collections** = secret sets.
 
 `ORG_GROUPS_ENABLED=true` in this pack. Isolation is groups × collections. Do not create a second org.
@@ -37,6 +37,7 @@ Default org name from utility-support is `Plant`. Override with `VW_ORG_NAME`.
 
 | Group          | Who                                                    |
 | -------------- | ------------------------------------------------------ |
+| `Employees`    | Everyone who is not IT or OT. Company-wide secrets only |
 | `IT-Users`     | General IT staff                                       |
 | `IT-Helpdesk`  | Helpdesk / endpoint support                            |
 | `IT-Network`   | Firewall, switch, VPN, DNS                             |
@@ -47,6 +48,22 @@ Default org name from utility-support is `Plant`. Override with `VW_ORG_NAME`.
 | `OT-Admins`    | OT privileged (very few)                               |
 | `OT-Vendors`   | OEM / integrator temp                                  |
 
+
+---
+
+## Company-wide collection
+
+
+| Collection       | What’s in it                                      | Employees | IT-* (except Vendors) | OT-* (except Vendors) | IT-Admins |
+| ---------------- | ------------------------------------------------- | --------- | --------------------- | --------------------- | --------- |
+| `Company-Shared` | WiFi, HR / payroll portal, company-wide SaaS      | V         | V                     | V                     | M         |
+
+
+Vendors stay off this collection. Guest WiFi for a contractor goes in `IT-Vendor` or `OT-Vendor`.
+
+`Employees` does not get any `IT-*` or `OT-*` collection. Personal logins stay in the personal vault.
+
+IT and OT people already see `Company-Shared` through their specialty group. They do not need a second membership in `Employees` unless you want one AD group that means “has a vault seat.”
 
 ---
 
@@ -102,7 +119,7 @@ IT groups have no grants on `OT-*` collections. OT groups have no grants on `IT-
 | 1–2 breakglass humans    | Owner    | `IT-Admins` and `OT-Admins`                     |
 | Day-to-day privileged IT | User     | `IT-Admins` (+ specialty if needed)             |
 | Controls leads           | User     | `OT-Admins` and/or `OT-Engineers`               |
-| Everyone else            | User     | Role group(s) only                              |
+| Everyone else            | User     | `Employees` only                                |
 
 
 Dual-hat people stay in one org. Put them in both an IT group and an OT group.
@@ -115,7 +132,7 @@ Turn this on after the org exists. Admin Console, Policies, Account recovery adm
 
 The [utility-support](https://github.com/ryokubaka/utility-support) quickstart turns account recovery on. Standalone `docker compose` does not. Do it in the UI, or re-run that bootstrap.
 
-Leave Single organization off if you also have a staff org (for example `GWA-Employees`). That policy removes members who belong to another org. IT vs OT does not need it.
+Leave Single organization off unless you intend this to be the only org. That policy removes members who belong to another org. Groups already separate staff, IT, and OT.
 
 Auto-enroll covers people invited after the policy is on. Anyone who already has a master password must self-enroll once before an admin can recover that account.
 
@@ -134,6 +151,6 @@ Auto-enroll covers people invited after the policy is on. Anyone who already has
 
 ## Minimal start (tiny headcount)
 
-Collections: `IT-Shared-Staff` · `IT-Servers` · `IT-Breakglass` · `OT-HMI` · `OT-PLCs` · `OT-Breakglass`
+Collections: `Company-Shared` · `IT-Shared-Staff` · `IT-Servers` · `IT-Breakglass` · `OT-HMI` · `OT-PLCs` · `OT-Breakglass`
 
-Groups: `IT-Users` → Shared V; `IT-Admins` → all IT M; `OT-Operators` → HMI V; `OT-Engineers` → PLCs E; `OT-Admins` → all OT M
+Groups: `Employees` → Company-Shared V; `IT-Users` → Shared V; `IT-Admins` → all IT M; `OT-Operators` → HMI V; `OT-Engineers` → PLCs E; `OT-Admins` → all OT M
