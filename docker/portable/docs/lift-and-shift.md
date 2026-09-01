@@ -13,13 +13,13 @@
 - [ ] Host with Docker Engine + Compose plugin
 - [ ] Static IP or DHCP reservation
 - [ ] Firewall: clients → host `:443` (and `:80` if using Caddy HTTP redirect)
-- [ ] Host outbound 587/465 to SMTP provider (or O365)
+- [ ] Host outbound 587/465 to SMTP provider (or O365 / Barracuda on :25)
 - [ ] AD DNS (or hosts) for `vw.org-testing.meow`
 - [ ] `docker compose up -d`
 - [ ] Path A (GPO Caddy root) **or** Path B (AD CS) — [tls-certs.md](tls-certs.md)
 - [ ] Create orgs / collections / groups — [organizations.md](organizations.md); disable public signups
 - [ ] Optional: [Directory Connector](directory-connector.md)
-- [ ] When IT ready: switch SMTP to Office 365 — [smtp.md](smtp.md)
+- [ ] When IT ready: switch SMTP to Office 365 or Barracuda — [smtp.md](smtp.md)
 - [ ] Mount NAS share; set `NAS_BACKUP_PATH`; `cp backup.env.example backup.env`; `--profile backup` — [backup.md](backup.md)
 - [ ] One test restore from NAS archive
 

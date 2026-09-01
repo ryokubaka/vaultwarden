@@ -1,6 +1,6 @@
 # SMTP (invites)
 
-No MTA in Compose by default. Vaultwarden talks to an external SMTP provider — same knobs for Gmail now and Office 365 later.
+No MTA in Compose by default. Vaultwarden talks to an external SMTP provider — same knobs for Gmail now and Office 365 or Barracuda later.
 
 Invite links always use `DOMAIN` in `.env` (e.g. `https://vw.org-testing.meow`).
 
@@ -281,7 +281,206 @@ Microsoft is [retiring basic auth for SMTP](https://techcommunity.microsoft.com/
 
 ---
 
-## Shared hard rules (any O365 option)
+## Barracuda Email Solutions (production)
+
+Goal: same as O365. Invites look like normal corporate email. Keep `DOMAIN=https://vw.org-testing.meow` so invite links stay correct.
+
+Barracuda is a gateway, not a mailbox. Pick the product they actually run before editing `.env`.
+
+| What IT has | Use |
+|-------------|-----|
+| **Email Security Gateway** (on-prem appliance, LAN IP) | [Option 1](#option-1--email-security-gateway-on-prem--ip-allowlist--recommended) |
+| **Email Gateway Defense** (cloud / ESS, hostname like `dXXXX.ess.barracudanetworks.com`) | [Option 2](#option-2--email-gateway-defense-cloud--ess) |
+| SASL / SMTP AUTH already enabled on the gateway | [Option 3](#option-3--smtp-auth-sasl--mailbox-password) |
+| Barracuda only filters **inbound**; mailboxes and outbound are still O365 | Stay on [Office 365](#office-365-later--production) |
+
+Quick tell: `dig MX contoso.com`. MX ending in `.ess.barracudanetworks.com` is cloud. MX pointing at a hostname they own is usually the appliance (or something in front of it).
+
+Official refs:
+
+- Appliance: [How to Route Outbound Mail from the Barracuda Email Security Gateway](https://documentation.campus.barracuda.com/wiki/spaces/BSFv51/pages/6685003/How+to+Route+Outbound+Mail+from+the+Barracuda+Email+Security+Gateway)
+- Cloud: [Configure Email Gateway Defense for on-prem mail servers](https://documentation.campus.barracuda.com/wiki/spaces/EGD/pages/2850896/Step+2+-+Configure+Email+Gateway+Defense+for+Exchange+2016+and+Other+On-Premise+Mail+Servers)
+
+If Mailpit was used: `docker compose --profile mailpit stop mailpit`.
+
+**Caveat:** lock the allowlist to the **Vaultwarden host only**. A whole plant WAN/LAN range turns every machine on that net into an open relay through Barracuda.
+
+---
+
+### Option 1 — Email Security Gateway (on-prem) — IP allowlist — recommended
+
+**Security:** Best for the appliance — no mailbox password on the host. Trust = VW host IP.  
+**Difficulty:** Easy if IT already relays outbound through the box; Medium if outbound scanning is not set up yet.
+
+#### What you need from IT / network
+
+| Item | Notes |
+|------|--------|
+| **ESG hostname or LAN IP** | The appliance Vaultwarden can reach. Not the public MX unless they published it. |
+| **VW host IP (or NAT)** | The address the appliance sees. Add **this** IP, not a /16. |
+| **Outbound TCP 25** | Host → ESG. Confirm the appliance accepts STARTTLS (`ADVANCED` → **Email Protocol**). |
+| **Accepted domain** | `SMTP_FROM` must be a domain the gateway is allowed to send as. |
+| **Rate-control exemption** | ESG rate-limits outbound. Exempt the VW IP or invites get throttled. |
+
+#### A) Allow the Vaultwarden host to relay
+
+Needs Barracuda admin.
+
+1. Open the Email Security Gateway web UI.
+2. **BASIC** → **Outbound**.
+3. **Relay Using Trusted IP/Range** → add the Vaultwarden host IP (netmask `255.255.255.255` for a single host).
+4. Barracuda wants IPs here, not hostnames. A hostname in **Relay Using Trusted Host/Domain** also needs SMTP AUTH or LDAP.
+5. **BLOCK/ACCEPT** → **Rate Control** → **Rate Control Exemption IP/Range** → same IP.
+6. Confirm outbound scanning already works for their mail server. If it does not, IT must finish [outbound routing](https://documentation.campus.barracuda.com/wiki/spaces/BSFv51/pages/6685003/How+to+Route+Outbound+Mail+from+the+Barracuda+Email+Security+Gateway) before Vaultwarden will go anywhere.
+
+Optional: **Senders With Relay Permission** can pin the From address to `vaultwarden@contoso.com`. Barracuda themselves say From-only lists are spoofable. Keep the IP allowlist as the real control.
+
+#### B) Vaultwarden `.env`
+
+```env
+SMTP_HOST=esg.contoso.local
+SMTP_PORT=25
+SMTP_SECURITY=starttls
+SMTP_FROM=vaultwarden@contoso.com
+SMTP_FROM_NAME=Vaultwarden
+# Do NOT set SMTP_USERNAME / SMTP_PASSWORD for IP relay
+```
+
+If the appliance does not offer STARTTLS on the LAN hop, set `SMTP_SECURITY=off` and keep this on the internal network only.
+
+```bash
+docker compose up -d vaultwarden
+# Admin → SMTP → Send test email
+```
+
+| Setting | Value |
+|---------|--------|
+| Host | ESG hostname or LAN IP |
+| Port | **25** (unless IT published submission elsewhere) |
+| TLS | STARTTLS if the box supports it |
+| Auth | None |
+
+#### C) Test / troubleshoot
+
+```bash
+timeout 5 bash -c 'cat < /dev/null > /dev/tcp/esg.contoso.local/25'; echo $?
+# 0 = TCP reachability OK
+```
+
+Check ESG **BASIC** → **Message Log** (direction: Outbound). Invite HTML with a `https://vw…` link can look like phishing. If the test never arrives, look at outbound quarantine and **BLOCK/ACCEPT** content filters.
+
+| Symptom | Likely cause |
+|---------|----------------|
+| Timeout on :25 | Host cannot reach ESG; firewall |
+| Relaying denied / 550 | VW IP not in Trusted IP/Range, or appliance sees a different NAT IP |
+| Accepted then silent | Rate control; outbound quarantine; content filter on the invite URL |
+| Works on LAN, dies off-site | ESG is not a public SMTP host — do not point `SMTP_HOST` at the internet MX |
+
+---
+
+### Option 2 — Email Gateway Defense (cloud / ESS)
+
+**Security:** Strong if the sender IP list is a single static egress. No password in `.env`.  
+**Difficulty:** Medium (Barracuda Cloud Control, static public IP, SPF, outbound TCP 25).
+
+Same idea as the O365 IP connector. The smarthost is Barracuda’s cloud hostname. Auth is none. They trust your public IP.
+
+Official path: [EGD for on-prem mail servers](https://documentation.campus.barracuda.com/wiki/spaces/EGD/pages/2850896/Step+2+-+Configure+Email+Gateway+Defense+for+Exchange+2016+and+Other+On-Premise+Mail+Servers) (steps 4–5). Skip the Exchange send-connector and point Vaultwarden at the hostname instead.
+
+#### What you need
+
+| Item | Notes |
+|------|--------|
+| **Outbound Hostname** | Cloud Control → Email Gateway Defense → **Domains** → **Domain Manager**. Looks like `dXXXXXXX.ess.barracudanetworks.com` (region suffix may differ). |
+| **Static public IPv4** | Egress IP of the Vaultwarden host. Dynamic WAN IPs break when they change. |
+| **Outbound TCP 25** | Host → internet. Many ISPs block 25. |
+| **Verified domain** | Sending domain must already be in EGD. |
+| **SPF** | Include Barracuda’s SPF for the region. |
+
+#### A) Allow the plant egress IP
+
+1. Sign in to [Barracuda Cloud Control](https://login.barracudanetworks.com) → **Email Gateway Defense**.
+2. **Outbound Settings** → **Sender IP Address Ranges**.
+3. Add the Vaultwarden **public** egress IP and the logging domain (the From domain).
+4. Comment it (`Vaultwarden plant host`) so the next admin does not treat it as leftover Exchange.
+
+#### B) SPF
+
+Merge into the existing SPF record. Do not create a second one. Pick the include for their Barracuda region:
+
+```text
+# US
+v=spf1 ip4:203.0.113.40 include:spf.ess.barracudanetworks.com -all
+```
+
+Other regions: `spf.ess.au.barracudanetworks.com`, `.ca.`, `.de.`, `.in.`, `.uk.`.
+
+If they already include Barracuda for Exchange outbound, adding the VW `ip4:` is still worth it while the message is in flight. Keep the include so mail that left via EGD passes SPF at the recipient.
+
+#### C) Vaultwarden `.env`
+
+```env
+SMTP_HOST=dXXXXXXX.ess.barracudanetworks.com
+SMTP_PORT=25
+SMTP_SECURITY=starttls
+SMTP_FROM=vaultwarden@contoso.com
+SMTP_FROM_NAME=Vaultwarden
+# Do NOT set SMTP_USERNAME / SMTP_PASSWORD
+```
+
+`SMTP_HOST` is the **Outbound Hostname** from Domain Manager. Do not use the inbound MX unless IT confirms they are the same.
+
+```bash
+docker compose up -d vaultwarden
+# Admin → SMTP → Send test email
+```
+
+#### D) Test / troubleshoot
+
+EGD **Dashboard** / message log, direction outbound.
+
+| Symptom | Likely cause |
+|---------|----------------|
+| Timeout on :25 | ISP/firewall blocking outbound 25 |
+| Rejected / not authorized | Sender IP missing or wrong (NAT, extra hop) |
+| Domain not allowed | From domain not in Domain Manager |
+| Accepted internally, external junk/reject | SPF include missing |
+| Works then stops | WAN IP changed |
+
+---
+
+### Option 3 — SMTP AUTH (SASL / mailbox password)
+
+**Security:** Weaker — password in `.env`.  
+**Difficulty:** Easy if IT already enabled SASL on the gateway.
+
+Use when they will not add an IP to the trusted-relay list.
+
+ESG: **BASIC** → **Outbound** → **Enable SASL/SMTP Authentication**. Either proxy AUTH to the destination mail server, or LDAP. Enable SMTP over TLS on **ADVANCED** → **Email Protocol** so the password is not cleartext.
+
+Dedicated service account. Not a human mailbox.
+
+```env
+SMTP_HOST=esg.contoso.local
+SMTP_PORT=25
+SMTP_SECURITY=starttls
+SMTP_USERNAME=vaultwarden@contoso.com
+SMTP_PASSWORD='your-password'
+SMTP_FROM=vaultwarden@contoso.com
+SMTP_FROM_NAME=Vaultwarden
+```
+
+Use port **587** only if IT published submission there. Cloud EGD outbound is IP-based; AUTH is an appliance feature.
+
+| Symptom | Likely cause |
+|---------|----------------|
+| `No compatible authentication mechanism` | SASL not enabled, or AUTH not offered on that port |
+| `Authentication unsuccessful` / 535 | Wrong password; LDAP/mail server AUTH proxy misconfigured |
+| Password works in Outlook, not here | VW speaks basic SMTP AUTH only |
+
+---
+
+## Shared hard rules (O365 or Barracuda)
 
 - Dedicated send identity (`vaultwarden@…`) — not a person’s mailbox.
 - Least privilege; alert on unusual send volume.

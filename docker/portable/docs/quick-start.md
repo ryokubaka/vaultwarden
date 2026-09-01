@@ -38,7 +38,7 @@ Expect a cert warning until you trust the Caddy root or install AD CS certs — 
 
 ## Next
 
-- [smtp.md](smtp.md) — Gmail / Mailjet / Mailpit  
+- [smtp.md](smtp.md) — Gmail / Mailjet / Mailpit / O365 / Barracuda  
 - [organizations.md](organizations.md) — orgs, groups, collections  
 - [directory-connector.md](directory-connector.md) — AD sync  
 - [lift-and-shift.md](lift-and-shift.md) — take it on site  
