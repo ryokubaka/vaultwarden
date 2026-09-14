@@ -16,7 +16,7 @@
 
 	encode zstd gzip
 
-	reverse_proxy vaultwarden:80 {
+	reverse_proxy vaultwarden:8085 {
 		header_up X-Real-IP {remote_host}
 	}
 }

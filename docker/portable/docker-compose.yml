@@ -1,7 +1,7 @@
 name: vaultwarden-portable
 
 # Image pins (bump deliberately; do not use :latest):
-#   vaultwarden/server          1.37.1
+#   vaultwarden/server          1.37.3
 #   caddy                       2.11.4
 #   axllent/mailpit             v1.30.7
 #   blacktirion/email-oauth2-proxy-docker  2026.07.03.1
@@ -9,7 +9,7 @@ name: vaultwarden-portable
 
 services:
   vaultwarden:
-    image: vaultwarden/server:1.37.1
+    image: vaultwarden/server:1.37.3
     container_name: vaultwarden
     restart: unless-stopped
     labels:
@@ -30,6 +30,11 @@ services:
       SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
       SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM in .env}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Vaultwarden}
+      # Container listen only. Do not publish 80/443 on the host — the plant
+      # or shared proxy owns those. Standalone TLS is the caddy service below.
+      ROCKET_PORT: "8085"
+    ports:
+      - "${VW_BIND:-0.0.0.0:8085}:8085"
     volumes:
       - ./data:/data
     networks:
