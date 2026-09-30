@@ -1,2 +1,6 @@
-# Ignore vendored scripts in GitHub stats
-src/static/scripts/* linguist-vendored
+# Scripts run in Linux containers. CRLF makes `set -eu` fail as "illegal option -".
+* text=auto eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.env.example text eol=lf

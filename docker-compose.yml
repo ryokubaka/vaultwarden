@@ -1,0 +1,150 @@
+name: vaultwarden
+
+# Image pins (bump deliberately; do not use :latest):
+#   vaultwarden/server          1.37.3
+#   caddy                       2.11.4
+#   axllent/mailpit             v1.30.7
+#   blacktirion/email-oauth2-proxy-docker  2026.07.03.1
+#   offen/docker-volume-backup  v2.48.2
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.37.3
+    container_name: vaultwarden
+    restart: unless-stopped
+    labels:
+      # Brief stop during offen backup so SQLite is consistent
+      docker-volume-backup.stop-during-backup: "vaultwarden"
+    env_file:
+      - .env
+    environment:
+      DOMAIN: ${DOMAIN:-https://vw.org-testing.meow}
+      SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED:-true}
+      INVITATIONS_ALLOWED: ${INVITATIONS_ALLOWED:-true}
+      SHOW_PASSWORD_HINT: ${SHOW_PASSWORD_HINT:-false}
+      ORG_GROUPS_ENABLED: ${ORG_GROUPS_ENABLED:-true}
+      # ADMIN_TOKEN / SMTP_USERNAME / SMTP_PASSWORD: env_file only.
+      # Do not put ADMIN_TOKEN here — Compose eats $ in Argon2 PHC strings.
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST in .env}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM in .env}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Vaultwarden}
+      # Listen on 80 inside the container (upstream default). Host publish is
+      # 8085 so the plant / shared proxy can keep 80 and 443. Docker-network
+      # Caddy must use vaultwarden:80. Standalone TLS is the caddy service below.
+    ports:
+      - "${VW_BIND:-0.0.0.0:8085}:80"
+    volumes:
+      - ./data:/data
+    networks:
+      - vw_net
+
+  caddy:
+    image: caddy:2.11.4
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      VW_HOST: ${VW_HOST:-vw.org-testing.meow}
+      MAIL_HOST: ${MAIL_HOST:-mail.org-testing.meow}
+      LOG_FILE: /data/access.log
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-data:/data
+      - ./caddy-config:/config
+      - ./certs:/certs:ro
+    depends_on:
+      - vaultwarden
+    networks:
+      - vw_net
+
+  # Optional catch-all UI. Enable: docker compose --profile mailpit up -d
+  mailpit:
+    profiles:
+      - mailpit
+    image: axllent/mailpit:v1.30.7
+    container_name: mailpit
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    networks:
+      - vw_net
+
+  # Optional O365 OAuth2 SMTP bridge. Enable: docker compose --profile oauth-smtp up -d
+  emailproxy:
+    profiles:
+      - oauth-smtp
+    image: blacktirion/email-oauth2-proxy-docker:2026.07.03.1
+    container_name: emailproxy
+    restart: unless-stopped
+    environment:
+      LOGFILE: "true"
+      DEBUG: ${EMAILPROXY_DEBUG:-false}
+      CACHE_STORE: /config/credstore.config
+    volumes:
+      - ./emailproxy:/config
+    networks:
+      - vw_net
+
+  # NAS / local archives via offen/docker-volume-backup.
+  # Sidecar (cron): docker compose --profile backup up -d
+  # One-shot: docker exec vw-backup /usr/bin/backup
+  # Docs: docs/backup.md
+  backup:
+    profiles:
+      - backup
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: vw-backup
+    restart: unless-stopped
+    env_file:
+      - backup.env
+    environment:
+      TZ: ${TZ:-UTC}
+      BACKUP_ARCHIVE: /archive
+      BACKUP_STOP_DURING_BACKUP_LABEL: vaultwarden
+    volumes:
+      - ./data:/backup/vaultwarden:ro
+      - ./caddy-data:/backup/caddy-data:ro
+      - ./emailproxy:/backup/emailproxy:ro
+      # Compose / .env / utility-support staged by `stacks backup`
+      - ./.backup-code:/backup/code:ro
+      # NAS share mounted on the host, or local ./backups fallback
+      - ${NAS_BACKUP_PATH:-./backups}:/archive
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Optional SSH key for NAS over SFTP (see backup.env.example)
+      - ./backup-ssh:/root/.ssh:ro
+    networks:
+      - vw_net
+
+  # Same image as `backup`, writable /backup mounts. One-shot:
+  #   docker compose --profile restore run --rm restore
+  # Named archive:
+  #   RESTORE_ARCHIVE=/archive/vw-YYYY-mm-ddTHH-MM-SS.tar.gz \
+  #     docker compose --profile restore run --rm restore
+  restore:
+    profiles:
+      - restore
+    image: offen/docker-volume-backup:v2.48.2
+    container_name: vw-restore
+    env_file:
+      - backup.env
+    environment:
+      TZ: ${TZ:-UTC}
+      RESTORE_ARCHIVE: ${RESTORE_ARCHIVE:-/archive/vw.latest.tar.gz}
+    volumes:
+      - ./data:/backup/vaultwarden
+      - ./emailproxy:/backup/emailproxy
+      - ${NAS_BACKUP_PATH:-./backups}:/archive:ro
+      - ./scripts/restore.sh:/restore.sh:ro
+    entrypoint: ["/bin/sh", "/restore.sh"]
+    networks:
+      - vw_net
+
+networks:
+  vw_net:
+    driver: bridge

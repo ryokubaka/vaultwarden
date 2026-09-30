@@ -1,0 +1,29 @@
+# Example after AD CS (or other enterprise CA) issues certs.
+# 1. Place PEM files in ./certs/ (see README Path B).
+# 2. cp Caddyfile.adcs.example Caddyfile
+# 3. docker compose up -d caddy
+
+{$VW_HOST} {
+	tls /certs/vw.pem /certs/vw.key
+
+	log {
+		level INFO
+		output file {$LOG_FILE} {
+			roll_size 10MB
+			roll_keep 10
+		}
+	}
+
+	encode zstd gzip
+
+	reverse_proxy vaultwarden:80 {
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+{$MAIL_HOST} {
+	# Separate cert, or reuse a multi-SAN cert that includes mail host:
+	tls /certs/mail.pem /certs/mail.key
+
+	reverse_proxy mailpit:8025
+}

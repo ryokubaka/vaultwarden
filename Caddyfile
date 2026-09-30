@@ -1,0 +1,27 @@
+# Portable pack: Caddy local CA (tls internal).
+# For AD CS-issued certs, see README.md "Path B — AD CS cert swap".
+
+{$VW_HOST} {
+	tls internal
+
+	log {
+		level INFO
+		output file {$LOG_FILE} {
+			roll_size 10MB
+			roll_keep 10
+		}
+	}
+
+	encode zstd gzip
+
+	reverse_proxy vaultwarden:80 {
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+# Only useful with: docker compose --profile mailpit up -d
+{$MAIL_HOST} {
+	tls internal
+
+	reverse_proxy mailpit:8025
+}

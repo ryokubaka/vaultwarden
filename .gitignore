@@ -1,16 +1,19 @@
-# Local build artifacts
-target
-
-# Data folder (repo root only; portable pack keeps docker/portable/data/.gitkeep)
-/data
-
-# IDE files
-.vscode
-.idea
-*.iml
-
-# Environment file
 .env
-
-# Web vault
-web-vault
+backup.env
+.admin-secret
+# Keep data/ in git; ignore vault contents (db, keys, attachments)
+data/*
+!data/.gitkeep
+caddy-data/
+caddy-config/
+mailpit-data/
+certs/*
+!certs/.gitkeep
+exported-ca/
+emailproxy/*
+!emailproxy/emailproxy.config.example
+backups/*
+!backups/.gitkeep
+.backup-code/
+backup-ssh/*
+!backup-ssh/.gitkeep
